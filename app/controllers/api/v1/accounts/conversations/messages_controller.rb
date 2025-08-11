@@ -31,7 +31,7 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     service = Messages::StatusUpdateService.new(message, 'sent')
     service.perform
     message.update!(content_attributes: {})
-    ::SendReplyJob.perform_later(message.id)
+    ::SendReplyJob.perform_later(message.id, message.conversation_id)
   rescue StandardError => e
     render_could_not_create_error(e.message)
   end

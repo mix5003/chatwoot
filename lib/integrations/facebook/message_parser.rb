@@ -50,6 +50,10 @@ class Integrations::Facebook::MessageParser
     delivery&.dig('watermark')
   end
 
+  def delivery_mids
+    delivery&.dig('mids')
+  end
+
   def echo?
     @messaging.dig('message', 'is_echo')
   end

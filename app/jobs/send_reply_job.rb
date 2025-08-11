@@ -1,9 +1,21 @@
 class SendReplyJob < ApplicationJob
   queue_as :high
 
-  def perform(message_id)
+  def perform(message_id, conversation_id)
+    conversation = Conversation.lock.find(conversation_id)
     message = Message.find(message_id)
-    conversation = message.conversation
+
+    next_message_that_should_be_send = conversation.messages.where(
+      message_type: :outgoing,
+      status: [:sent, nil],
+    ).first
+
+    if next_message_that_should_be_send != nil and message.id != next_message_that_should_be_send.id
+      sleep(0.1)
+      ::SendReplyJob.perform_later(message_id, message.conversation_id)
+      return
+    end
+
     channel_name = conversation.inbox.channel.class.to_s
 
     services = {
