@@ -208,5 +208,68 @@ describe Line::SendOnLineService do
         described_class.new(message: message).perform
       end
     end
+
+    context 'with reply token' do
+      let(:reply_token) { 'xxx_reply_token_xxx' }
+      let(:cache_key) do
+        format(Redis::Alfred::LINE_REPLY_TOKEN_KEY, conversation_id: message.conversation.id)
+      end
+
+      let(:reply_success) do
+        instance_double(
+          HTTParty::Response,
+          :success? => true,
+          :code => '200',
+          :body => {
+            'sentMessages': [
+              {
+                'id': '461230966842064897',
+                'quoteToken': 'IStG5h1Tz7b..'
+              }
+            ]
+          }.to_json
+        )
+      end
+
+      let(:reply_error) do
+        instance_double(
+          HTTParty::Response,
+          :success? => true,
+          :code => '400',
+          :body => {
+            'message': 'Invalid reply token'
+          }.to_json
+        )
+      end
+
+      before do
+        Redis::Alfred.set(cache_key, reply_token)
+      end
+
+      it 'sends the message with text only by reply api' do
+        expect(line_client).to receive(:reply_message).with(
+          reply_token,
+          { type: 'text', text: message.content }
+        ).and_return(reply_success)
+
+        described_class.new(message: message).perform
+        expect(Redis::Alfred.get(cache_key)).to be_nil
+      end
+
+      it 'sends the message with text only by push api if reply token not valid' do
+        expect(line_client).to receive(:reply_message).with(
+          reply_token,
+          { type: 'text', text: message.content }
+        ).and_return(reply_error)
+
+        expect(line_client).to receive(:push_message).with(
+          message.conversation.contact_inbox.source_id,
+          { type: 'text', text: message.content }
+        )
+
+        described_class.new(message: message).perform
+        expect(Redis::Alfred.get(cache_key)).to be_nil
+      end
+    end
   end
 end

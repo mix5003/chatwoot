@@ -27,6 +27,8 @@ class Line::IncomingMessageService
 
       next unless message_created? event
 
+      save_reply_token event
+
       attach_files event['message']
       @message.save!
     end
@@ -167,5 +169,12 @@ class Line::IncomingMessageService
 
   def file_content_type(file_content)
     file_type(file_content.content_type)
+  end
+
+  def save_reply_token(event)
+    return unless event['replyToken']
+
+    cache_key = format(Redis::Alfred::LINE_REPLY_TOKEN_KEY, conversation_id: @conversation.id)
+    Redis::Alfred.setex(cache_key, event['replyToken'], 10.minutes)
   end
 end

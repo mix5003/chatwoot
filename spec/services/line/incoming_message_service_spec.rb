@@ -294,6 +294,27 @@ describe Line::IncomingMessageService do
         expect(line_channel.inbox.messages.first.content).to eq('Hello, world 1')
         expect(line_channel.inbox.messages.last.content).to eq('Hello, world 2')
       end
+
+      it 'save replyToken to be use when reply' do
+        line_user_profile2 = double
+        allow(line_bot).to receive(:get_profile).with('U4af49806292').and_return(line_user_profile2)
+        allow(line_user_profile2).to receive(:body).and_return(
+          {
+            'displayName': 'LINE Test 2',
+            'userId': 'U4af49806292',
+            'pictureUrl': 'https://test.com'
+          }.to_json
+        )
+        described_class.new(inbox: line_channel.inbox, params: multi_user_params).perform
+
+        conversation1 = line_channel.inbox.conversations.first
+        cache_key1 = format(Redis::Alfred::LINE_REPLY_TOKEN_KEY, conversation_id: conversation1.id)
+        expect(Redis::Alfred.get(cache_key1)).to eq('0f3779fba3b349968c5d07db31eab56f1')
+
+        conversation2 = line_channel.inbox.conversations.last
+        cache_key2 = format(Redis::Alfred::LINE_REPLY_TOKEN_KEY, conversation_id: conversation2.id)
+        expect(Redis::Alfred.get(cache_key2)).to eq('0f3779fba3b349968c5d07db31eab56f2')
+      end
     end
 
     context 'when valid sticker message params' do

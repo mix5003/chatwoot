@@ -6,6 +6,31 @@ class Line::SendOnLineService < Base::SendOnChannelService
   end
 
   def perform_reply
+    return if perform_reply_by_reply_api
+
+    perform_reply_by_push_api
+  end
+
+  def perform_reply_by_reply_api
+    cache_key = format(Redis::Alfred::LINE_REPLY_TOKEN_KEY, conversation_id: message.conversation.id)
+    reply_token = Redis::Alfred.get(cache_key)
+    return false unless reply_token
+
+    Redis::Alfred.delete(cache_key)
+
+    response = channel.client.reply_message(reply_token, build_payload)
+
+    return false if response.blank?
+
+    if response.code == '200'
+      # If the request is successful, update the message status to delivered
+      return Messages::StatusUpdateService.new(message, 'delivered').perform
+    end
+
+    return false
+  end
+
+  def perform_reply_by_push_api
     response = channel.client.push_message(message.conversation.contact_inbox.source_id, build_payload)
 
     return if response.blank?

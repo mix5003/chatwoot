@@ -47,4 +47,6 @@ module Redis::RedisKeys
   # Track conversation assignments to agents for rate limiting
   ASSIGNMENT_KEY = 'ASSIGNMENT::%<inbox_id>d::AGENT::%<agent_id>d::CONVERSATION::%<conversation_id>d'.freeze
   ASSIGNMENT_KEY_PATTERN = 'ASSIGNMENT::%<inbox_id>d::AGENT::%<agent_id>d::*'.freeze
+
+  LINE_REPLY_TOKEN_KEY = 'LINE_REPLY_TOKEN_CONVERSATION::%<conversation_id>d'.freeze
 end
